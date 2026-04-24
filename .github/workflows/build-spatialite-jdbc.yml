@@ -116,13 +116,18 @@ jobs:
           mkdir -p src/main/resources/org/spatialite/native/Linux
           mkdir -p src/main/resources/org/spatialite/native/Mac
 
-          # Copy the architecture subfolders that were uploaded
-          cp -r native/natives-windows/Windows/amd64 src/main/resources/org/spatialite/native/Windows/ || true
-          cp -r native/natives-linux/Linux/amd64 src/main/resources/org/spatialite/native/Linux/ || true
-          cp -r native/natives-macos-arm/Mac/aarch64 src/main/resources/org/spatialite/native/Mac/ || true
+          cp -r native/natives-windows/amd64 src/main/resources/org/spatialite/native/Windows/ || true
+          cp -r native/natives-linux/amd64 src/main/resources/org/spatialite/native/Linux/ || true
+          cp -r native/natives-macos-arm/aarch64 src/main/resources/org/spatialite/native/Mac/ || true
 
           echo "Final resources layout:"
           find src/main/resources/org/spatialite/native -maxdepth 3 -type f -print || true
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
 
       - name: Build JDBC JAR
         run: mvn -q -DskipTests package
