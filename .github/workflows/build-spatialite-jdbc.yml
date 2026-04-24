@@ -1,0 +1,109 @@
+name: Build SpatiaLite JDBC (Windows + Linux + macOS ARM)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install MSYS2
+        uses: msys2/setup-msys2@v2
+        with:
+          update: true
+          install: >
+            base-devel
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-geos
+            mingw-w64-x86_64-proj
+            mingw-w64-x86_64-sqlite3
+            mingw-w64-x86_64-libspatialite
+
+      - name: Collect Windows native libs
+        shell: msys2 {0}
+        run: |
+          mkdir -p native/Windows/amd64
+          cp /mingw64/bin/*.dll native/Windows/amd64/
+
+      - name: Upload Windows natives
+        uses: actions/upload-artifact@v4
+        with:
+          name: natives-windows
+          path: native/Windows/amd64/
+
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y gcc g++ make libsqlite3-dev libgeos-dev libproj-dev libspatialite-dev
+
+      - name: Collect Linux native libs
+        run: |
+          mkdir -p native/Linux/amd64
+          cp /usr/lib/x86_64-linux-gnu/libspatialite.so* native/Linux/amd64/
+          cp /usr/lib/x86_64-linux-gnu/libgeos*.so* native/Linux/amd64/
+          cp /usr/lib/x86_64-linux-gnu/libproj*.so* native/Linux/amd64/
+          cp /usr/lib/x86_64-linux-gnu/libsqlite3.so* native/Linux/amd64/
+
+      - name: Upload Linux natives
+        uses: actions/upload-artifact@v4
+        with:
+          name: natives-linux
+          path: native/Linux/amd64/
+
+  build-macos-arm:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          brew install sqlite geos proj libspatialite
+
+      - name: Collect macOS ARM native libs
+        run: |
+          mkdir -p native/Mac/aarch64
+          cp /opt/homebrew/lib/libspatialite.* native/Mac/aarch64/
+          cp /opt/homebrew/lib/libgeos* native/Mac/aarch64/
+          cp /opt/homebrew/lib/libproj* native/Mac/aarch64/
+          cp /opt/homebrew/lib/libsqlite3.* native/Mac/aarch64/
+
+      - name: Upload macOS natives
+        uses: actions/upload-artifact@v4
+        with:
+          name: natives-macos-arm
+          path: native/Mac/aarch64/
+
+  package-jar:
+    runs-on: ubuntu-latest
+    needs: [build-windows, build-linux, build-macos-arm]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all native artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: native/
+
+      - name: Copy natives into JAR structure
+        run: |
+          mkdir -p src/main/resources/org/spatialite/native/
+          cp -r native/natives-windows/Windows src/main/resources/org/spatialite/native/
+          cp -r native/natives-linux/Linux src/main/resources/org/spatialite/native/
+          cp -r native/natives-macos-arm/Mac src/main/resources/org/spatialite/native/
+
+      - name: Build JDBC JAR
+        run: mvn -q -DskipTests package
+
+      - name: Upload final JAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: spatialite-jdbc-crossplatform
+          path: target/*.jar
