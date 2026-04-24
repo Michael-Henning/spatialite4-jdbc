@@ -10,7 +10,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install MSYS2
+      - name: Install MSYS2 and packages
         uses: msys2/setup-msys2@v2
         with:
           update: true
@@ -27,12 +27,13 @@ jobs:
         run: |
           mkdir -p native/Windows/amd64
           cp /mingw64/bin/*.dll native/Windows/amd64/
+          ls -la native/Windows/amd64 || true
 
       - name: Upload Windows natives
         uses: actions/upload-artifact@v4
         with:
           name: natives-windows
-          path: native/Windows/amd64/
+          path: native/Windows
 
   build-linux:
     runs-on: ubuntu-latest
@@ -48,16 +49,17 @@ jobs:
       - name: Collect Linux native libs
         run: |
           mkdir -p native/Linux/amd64
-          cp /usr/lib/x86_64-linux-gnu/libspatialite.so* native/Linux/amd64/
-          cp /usr/lib/x86_64-linux-gnu/libgeos*.so* native/Linux/amd64/
-          cp /usr/lib/x86_64-linux-gnu/libproj*.so* native/Linux/amd64/
-          cp /usr/lib/x86_64-linux-gnu/libsqlite3.so* native/Linux/amd64/
+          cp /usr/lib/x86_64-linux-gnu/libspatialite.so* native/Linux/amd64/ || true
+          cp /usr/lib/x86_64-linux-gnu/libgeos*.so* native/Linux/amd64/ || true
+          cp /usr/lib/x86_64-linux-gnu/libproj*.so* native/Linux/amd64/ || true
+          cp /usr/lib/x86_64-linux-gnu/libsqlite3.so* native/Linux/amd64/ || true
+          ls -la native/Linux/amd64 || true
 
       - name: Upload Linux natives
         uses: actions/upload-artifact@v4
         with:
           name: natives-linux
-          path: native/Linux/amd64/
+          path: native/Linux
 
   build-macos-arm:
     runs-on: macos-latest
@@ -67,26 +69,27 @@ jobs:
 
       - name: Install dependencies
         run: |
+          brew update
           brew install geos proj libspatialite
 
       - name: Collect macOS ARM native libs
         run: |
           mkdir -p native/Mac/aarch64
-          cp /opt/homebrew/lib/libspatialite.* native/Mac/aarch64/
-          cp /opt/homebrew/lib/libgeos* native/Mac/aarch64/
-          cp /opt/homebrew/lib/libproj* native/Mac/aarch64/
+          cp /opt/homebrew/lib/libspatialite.* native/Mac/aarch64/ || true
+          cp /opt/homebrew/lib/libgeos* native/Mac/aarch64/ || true
+          cp /opt/homebrew/lib/libproj* native/Mac/aarch64/ || true
           # Do NOT copy libsqlite3 — macOS provides it system-wide
+          ls -la native/Mac/aarch64 || true
 
       - name: Upload macOS natives
         uses: actions/upload-artifact@v4
         with:
           name: natives-macos-arm
-          path: native/Mac/aarch64/
+          path: native/Mac
 
   package-jar:
     runs-on: ubuntu-latest
     needs: [build-windows, build-linux, build-macos-arm]
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -96,15 +99,30 @@ jobs:
         with:
           path: native/
 
+      - name: Debug artifact structure
+        run: |
+          echo "=== native directory listing ==="
+          find native -maxdepth 4 -type d -print || true
+          echo "=== natives-windows contents ==="
+          ls -la native/natives-windows || true
+          echo "=== natives-linux contents ==="
+          ls -la native/natives-linux || true
+          echo "=== natives-macos-arm contents ==="
+          ls -la native/natives-macos-arm || true
+
       - name: Copy natives into JAR structure
         run: |
           mkdir -p src/main/resources/org/spatialite/native/Windows
           mkdir -p src/main/resources/org/spatialite/native/Linux
           mkdir -p src/main/resources/org/spatialite/native/Mac
 
-          cp -r native/natives-windows/amd64 src/main/resources/org/spatialite/native/Windows/
-          cp -r native/natives-linux/amd64 src/main/resources/org/spatialite/native/Linux/
-          cp -r native/natives-macos-arm/aarch64 src/main/resources/org/spatialite/native/Mac/
+          # Copy the architecture subfolders that were uploaded
+          cp -r native/natives-windows/Windows/amd64 src/main/resources/org/spatialite/native/Windows/ || true
+          cp -r native/natives-linux/Linux/amd64 src/main/resources/org/spatialite/native/Linux/ || true
+          cp -r native/natives-macos-arm/Mac/aarch64 src/main/resources/org/spatialite/native/Mac/ || true
+
+          echo "Final resources layout:"
+          find src/main/resources/org/spatialite/native -maxdepth 3 -type f -print || true
 
       - name: Build JDBC JAR
         run: mvn -q -DskipTests package
