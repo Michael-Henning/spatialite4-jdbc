@@ -60,11 +60,12 @@ jobs:
   build-macos-arm:
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Install dependencies
         run: |
-          brew install sqlite geos proj libspatialite
+          brew install geos proj libspatialite
 
       - name: Collect macOS ARM native libs
         run: |
@@ -72,13 +73,14 @@ jobs:
           cp /opt/homebrew/lib/libspatialite.* native/Mac/aarch64/
           cp /opt/homebrew/lib/libgeos* native/Mac/aarch64/
           cp /opt/homebrew/lib/libproj* native/Mac/aarch64/
-          cp /opt/homebrew/lib/libsqlite3.* native/Mac/aarch64/
+          # Do NOT copy libsqlite3 — macOS provides it system-wide
 
       - name: Upload macOS natives
         uses: actions/upload-artifact@v4
         with:
           name: natives-macos-arm
           path: native/Mac/aarch64/
+
 
   package-jar:
     runs-on: ubuntu-latest
