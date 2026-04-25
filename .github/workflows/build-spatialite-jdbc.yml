@@ -173,6 +173,38 @@ jobs:
 
           echo "Final resources layout:"
           find src/main/resources/org/spatialite/native -maxdepth 4 -type f -print || true
+      - name: Create Windows DLL aliases for loader
+        run: |
+          set -e
+          WIN_DIR=src/main/resources/org/spatialite/native/Windows/amd64
+          if [ -d "$WIN_DIR" ]; then
+            echo "Creating Windows DLL aliases in $WIN_DIR"
+            cd "$WIN_DIR"
+            # find the first libspatialite-*.dll (handles libspatialite-5.dll or -7.dll)
+            if ls libspatialite-*.dll 1> /dev/null 2>&1; then
+              SPATIALITE_SRC=$(ls libspatialite-*.dll | head -n1)
+              echo "Using $SPATIALITE_SRC to create aliases"
+              cp "$SPATIALITE_SRC" spatialite.dll
+              cp "$SPATIALITE_SRC" libspatialite.dll
+            elif [ -f libspatialite.dll ]; then
+              echo "libspatialite.dll already present, creating spatialite.dll"
+              cp libspatialite.dll spatialite.dll
+            else
+              echo "No libspatialite found; skipping alias creation"
+            fi
+
+            # sqlite3 alias
+            if [ -f libsqlite3-0.dll ]; then
+              cp libsqlite3-0.dll sqlite3.dll
+            elif [ -f libsqlite3.dll ]; then
+              cp libsqlite3.dll sqlite3.dll
+            else
+              echo "No sqlite3 DLL found; skipping sqlite3 alias"
+            fi
+            cd - >/dev/null
+          else
+            echo "Windows native directory $WIN_DIR not present; skipping alias creation"
+          fi
 
 
       - name: Set up JDK 21
