@@ -204,6 +204,27 @@ jobs:
           else
             echo "Windows native directory $WIN_DIR not present; skipping alias creation"
           fi
+      - name: Replace MinGW runtime DLLs with newer versions
+        run: |
+          set -e
+          echo "Downloading updated MinGW-w64 runtime DLLs"
+
+          # Download a modern MinGW-w64 toolchain (win32-seh is correct for MSYS2)
+          wget -q https://sourceforge.net/projects/mingw-w64/files/Toolchains%20targetting%20Win64/Personal%20Builds/mingw-builds/12.2.0/threads-win32/seh/x86_64-12.2.0-release-win32-seh-rt_v10-rev3.7z/download -O mingw.7z
+
+          # Extract only the bin/ folder
+          7z x mingw.7z -o./mingw-runtime >/dev/null
+
+          RUNTIME_DIR=$(find mingw-runtime -type d -name bin | head -n1)
+          WIN_DIR=src/main/resources/org/spatialite/native/Windows/amd64
+
+          echo "Replacing outdated MinGW runtime DLLs in $WIN_DIR"
+          cp "$RUNTIME_DIR/libstdc++-6.dll" "$WIN_DIR/libstdc++-6.dll"
+          cp "$RUNTIME_DIR/libgcc_s_seh-1.dll" "$WIN_DIR/libgcc_s_seh-1.dll"
+          cp "$RUNTIME_DIR/libwinpthread-1.dll" "$WIN_DIR/libwinpthread-1.dll"
+
+          echo "Updated MinGW runtime DLLs:"
+          ls -la "$WIN_DIR" | grep -E 'libstdc|libgcc|winpthread'
 
 
       - name: Set up JDK 21
