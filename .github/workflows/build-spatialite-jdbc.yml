@@ -118,61 +118,60 @@ jobs:
           mkdir -p src/main/resources/org/spatialite/native/Linux/amd64
           mkdir -p src/main/resources/org/spatialite/native/Mac/aarch64
 
-          # Copy Windows natives if the downloaded artifact path exists
-          if [ -d native/natives-windows/Windows/amd64 ]; then
-            echo "Copying Windows natives from native/natives-windows/Windows/amd64"
-            cp -r native/natives-windows/Windows/amd64/* src/main/resources/org/spatialite/native/Windows/amd64/
+          # Copy Windows natives
+          if [ -d native/natives-windows/amd64 ]; then
+            echo "Copying Windows natives"
+            cp -r native/natives-windows/amd64/* src/main/resources/org/spatialite/native/Windows/amd64/
           else
-            echo "Windows natives folder not found at native/natives-windows/Windows/amd64"
+            echo "Windows natives folder not found at native/natives-windows/amd64"
           fi
 
-          # Copy Linux natives if present
-          if [ -d native/natives-linux/Linux/amd64 ]; then
-            echo "Copying Linux natives from native/natives-linux/Linux/amd64"
-            cp -r native/natives-linux/Linux/amd64/* src/main/resources/org/spatialite/native/Linux/amd64/
+          # Copy Linux natives
+          if [ -d native/natives-linux/amd64 ]; then
+            echo "Copying Linux natives"
+            cp -r native/natives-linux/amd64/* src/main/resources/org/spatialite/native/Linux/amd64/
           else
-            echo "Linux natives folder not found at native/natives-linux/Linux/amd64"
+            echo "Linux natives folder not found at native/natives-linux/amd64"
           fi
 
-          # Copy macOS natives if present
-          if [ -d native/natives-macos-arm/Mac/aarch64 ]; then
-            echo "Copying macOS natives from native/natives-macos-arm/Mac/aarch64"
-            cp -r native/natives-macos-arm/Mac/aarch64/* src/main/resources/org/spatialite/native/Mac/aarch64/
+          # Copy macOS ARM natives
+          if [ -d native/natives-macos-arm/aarch64 ]; then
+            echo "Copying macOS ARM natives"
+            cp -r native/natives-macos-arm/aarch64/* src/main/resources/org/spatialite/native/Mac/aarch64/
           else
-            echo "macOS natives folder not found at native/natives-macos-arm/Mac/aarch64"
+            echo "macOS natives folder not found at native/natives-macos-arm/aarch64"
           fi
 
-          # Create Windows filename aliases only if the source DLL exists
+          # Create Windows DLL aliases
           WIN_DIR=src/main/resources/org/spatialite/native/Windows/amd64
           if [ -d "$WIN_DIR" ]; then
             cd "$WIN_DIR"
-            # detect actual libspatialite filename (version may vary)
+
+            # find libspatialite-*.dll
             if ls libspatialite-*.dll 1> /dev/null 2>&1; then
               SPATIALITE_SRC=$(ls libspatialite-*.dll | head -n1)
-              echo "Found $SPATIALITE_SRC, creating spatialite.dll and libspatialite.dll aliases"
+              echo "Using $SPATIALITE_SRC to create aliases"
               cp "$SPATIALITE_SRC" spatialite.dll
               cp "$SPATIALITE_SRC" libspatialite.dll
-            elif [ -f libspatialite.dll ]; then
-              echo "libspatialite.dll already present"
-              cp libspatialite.dll spatialite.dll || true
             else
               echo "No libspatialite DLL found to alias"
             fi
 
+            # sqlite alias
             if [ -f libsqlite3-0.dll ]; then
-              cp libsqlite3-0.dll sqlite3.dll || true
+              cp libsqlite3-0.dll sqlite3.dll
             elif [ -f libsqlite3.dll ]; then
-              cp libsqlite3.dll sqlite3.dll || true
+              cp libsqlite3.dll sqlite3.dll
             else
               echo "No sqlite3 DLL found to alias"
             fi
+
             cd - >/dev/null
-          else
-            echo "Windows resource directory $WIN_DIR does not exist, skipping alias creation"
           fi
 
           echo "Final resources layout:"
-          find src/main/resources/org/spatialite/native -maxdepth 4 -type f -print || true
+          find src/main/resources/org/spatialite/native -maxdepth 4 -type f -print
+
       - name: Create Windows DLL aliases for loader
         run: |
           set -e
